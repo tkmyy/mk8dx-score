@@ -38,7 +38,6 @@ def make_Xy(basenames):
 
     X = np.array(X)
     y = np.array(y)
-    print(pd.Series(y).value_counts().sort_index())
 
     X = X.astype("float32")
     X = X / 255.0
@@ -114,10 +113,27 @@ def save_history_plot(history, lr, drop_rate):
 
 
 def save_confusion_matrix(model, X_test, y_test, lr, drop_rate):
+    class_to_str = {
+        0: "0",
+        1: "1",
+        2: "2",
+        3: "3",
+        4: "4",
+        5: "5",
+        6: "6",
+        7: "7",
+        8: "8",
+        9: "9",
+        10: " ",
+        11: "+",
+        12: "-"
+    }
+    class_str = [class_to_str[i] for i in range(13)]
+
     predict_classes = model.predict_classes(X_test)
     true_classes = np.argmax(y_test, 1)
     cm = confusion_matrix(true_classes, predict_classes)
-    df = pd.DataFrame(cm, index=[i for i in range(13)], columns=[i for i in range(13)])
+    df = pd.DataFrame(cm, index=class_str, columns=class_str)
 
     plt.figure(figsize=(8, 8))
     sns.heatmap(df, annot=True, fmt="g", cmap="Oranges", square=True)
@@ -125,7 +141,3 @@ def save_confusion_matrix(model, X_test, y_test, lr, drop_rate):
     plt.ylabel("true class")
     plt.savefig(f"../output/heatmap_lr-{lr}_drop-{drop_rate}.png")
     plt.close()
-
-
-if __name__ == "__main__":
-    main()
