@@ -141,3 +141,7 @@ def save_confusion_matrix(model, X_test, y_test, lr, drop_rate):
     plt.ylabel("true class")
     plt.savefig(f"../output/heatmap_lr-{lr}_drop-{drop_rate}.png")
     plt.close()
+
+
+if __name__ == "__main__":
+    main()
