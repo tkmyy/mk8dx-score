@@ -29,8 +29,9 @@ def make_Xy(basenames):
     y = []
     for basename in basenames:
         annotation_df = pd.read_csv(f"../annotations/{basename}.csv")
-        for row in range(12):
-            for idx in range(8):
+        row_num, idx_num =  annotation_df.shape
+        for row in range(row_num):
+            for idx in range(idx_num):
                 data = cv2.imread(f"../7seg_datasets/{basename}_{row}_{idx}.jpg")[:, :, 0]
                 target = annotation_df.iloc[row, idx]
                 X.append(data)
@@ -50,9 +51,7 @@ def make_Xy(basenames):
 def fit_and_save_model(X, y, lr, drop_rate):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5, stratify=y, shuffle=True)
     model = build_model(X_train, lr, drop_rate)
-
     history = model.fit(X_train, y_train, batch_size=32, epochs=100, validation_split=0.2)
-    print(model.evaluate(X_test, y_test))
 
     save_history_plot(history, lr, drop_rate)
     save_confusion_matrix(model, X_test, y_test, lr, drop_rate)
@@ -81,8 +80,8 @@ def build_model(X, lr, drop_rate):
     model.add(Dropout(drop_rate))
 
     model.add(Flatten())
-    model.add(Dense(512, activation="relu"))
-    model.add(Dropout(0.5))
+    model.add(Dense(256, activation="relu"))
+    model.add(Dropout(drop_rate))
     model.add(Dense(out_dim, activation="softmax"))
 
     optimizer = keras.optimizers.Adam(lr=lr, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
@@ -128,15 +127,15 @@ def save_confusion_matrix(model, X_test, y_test, lr, drop_rate):
         11: "+",
         12: "-"
     }
-    class_str = [class_to_str[i] for i in range(13)]
+    class_str = [class_to_str[i] for i in range(len(class_to_str))]
 
-    predict_classes = model.predict_classes(X_test)
-    true_classes = np.argmax(y_test, 1)
+    predict_classes = np.argmax(model.predict(X_test), axis=1)
+    true_classes = np.argmax(y_test, axis=1)
     cm = confusion_matrix(true_classes, predict_classes)
-    df = pd.DataFrame(cm, index=class_str, columns=class_str)
+    cm_df = pd.DataFrame(cm, index=class_str, columns=class_str)
 
     plt.figure(figsize=(8, 8))
-    sns.heatmap(df, annot=True, fmt="g", cmap="Oranges", square=True)
+    sns.heatmap(cm_df, annot=True, fmt="g", cmap="Oranges", square=True)
     plt.xlabel("predicted class")
     plt.ylabel("true class")
     plt.savefig(f"../output/heatmap_lr-{lr}_drop-{drop_rate}.png")
