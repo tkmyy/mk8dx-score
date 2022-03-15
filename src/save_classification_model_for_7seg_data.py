@@ -17,7 +17,7 @@ plt.rcParams["font.size"] = 14
 
 
 def main():
-    orig_img_paths = glob.glob("../images/*.PNG")
+    orig_img_paths = glob.glob("../images/*.PNG") + glob.glob("../images/*.JPG")
     basenames = [os.path.splitext(os.path.basename(filepath))[0] for filepath in orig_img_paths]
 
     X, y = make_Xy(basenames)
