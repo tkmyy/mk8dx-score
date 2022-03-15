@@ -8,7 +8,7 @@ from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import LabelEncoder
 
 import lightgbm as lgb
-from lightgbm import log_evaluation
+from lightgbm import log_evaluation, early_stopping
 
 plt.rcParams["font.size"] = 14
 
@@ -56,6 +56,9 @@ def predict_and_eval(X, y):
 
     params = {
         "objective": "regression",
+        "learning_rate": 0.01,
+        "max_depth": 6,
+        "num_leaves": 31,
         "verbose": -1,
         "seed": 42,
     }
@@ -63,7 +66,8 @@ def predict_and_eval(X, y):
         params,
         lgb_train,
         valid_sets=lgb_val,
-        callbacks=[log_evaluation(-1)]
+        num_boost_round=1000,
+        callbacks=[log_evaluation(-1), early_stopping(10)]
     )
 
     y_val_pred = model.predict(X_val)
