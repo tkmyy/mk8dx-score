@@ -1,7 +1,7 @@
-import os
 import glob
+import os
+
 import cv2
-import matplotlib.pyplot as plt
 
 
 def main():
@@ -16,19 +16,13 @@ def save_segment_data(filepath):
     img_gray = color_to_gray(img_bgr, thr=150)
 
     row_length = 12
-    w_ranges = [
-        [1050, 1080],
-        [1080, 1093],
-        [1093, 1105],
-    ] + \
-    [
-        [1127+i*18, 1127+(i+1)*18]
-        for i in range(5)
+    w_ranges = [[1050, 1080], [1080, 1093], [1093, 1105]] + [
+        [1127 + i * 18, 1127 + (i + 1) * 18] for i in range(5)
     ]
 
     for row in range(row_length):
         is_white_back = False
-        row_data = img_gray[52*(row+1)+10:51+52*(row+1)-10, :, :]
+        row_data = img_gray[52 * (row + 1) + 10 : 51 + 52 * (row + 1) - 10, :, :]
         if (row_data[:, 1050:1225, :].flatten() > 200).sum() > 10000:
             is_white_back = True
 

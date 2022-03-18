@@ -1,14 +1,13 @@
 import glob
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error
-from sklearn.preprocessing import LabelEncoder
 
 import lightgbm as lgb
-from lightgbm import log_evaluation, early_stopping
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+from lightgbm import early_stopping, log_evaluation
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
 
 plt.rcParams["font.size"] = 14
 
@@ -22,7 +21,6 @@ def main():
 
 def preprocess(path):
     score_df = pd.read_csv(path)
-    # score_df["num_of_racer"] = 
     score_df["score_sum"] = score_df["score_before"].sum()
     score_df["score_mean"] = score_df["score_before"].mean()
     score_df["score_std"] = score_df["score_before"].std()
@@ -31,7 +29,9 @@ def preprocess(path):
     score_df["score_max"] = score_df["score_before"].max()
 
     for stat in ("mean", "std", "median", "min", "max"):
-        score_df[f"diff_from_{stat}"] = score_df["score_before"] - score_df[f"score_{stat}"]
+        score_df[f"diff_from_{stat}"] = (
+            score_df["score_before"] - score_df[f"score_{stat}"]
+        )
 
     score_df = score_df.drop(columns="score_after")
 
@@ -44,12 +44,14 @@ def make_Xy(data):
 
     le = LabelEncoder()
     X["rank"] = le.fit_transform(X["rank"])
-    
+
     return X, y
 
 
 def predict_and_eval(X, y):
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=42)
+    X_train, X_val, y_train, y_val = train_test_split(
+        X, y, test_size=0.2, shuffle=True, random_state=42
+    )
 
     lgb_train = lgb.Dataset(X_train, y_train)
     lgb_val = lgb.Dataset(X_val, y_val, reference=lgb_train)
@@ -67,7 +69,7 @@ def predict_and_eval(X, y):
         lgb_train,
         valid_sets=lgb_val,
         num_boost_round=1000,
-        callbacks=[log_evaluation(-1), early_stopping(10)]
+        callbacks=[log_evaluation(-1), early_stopping(10)],
     )
 
     y_val_pred = model.predict(X_val)
@@ -77,12 +79,17 @@ def predict_and_eval(X, y):
 
 
 def save_feature_importance(model, columns):
-    importance_df = pd.DataFrame({"importance": model.feature_importance(importance_type="gain"), "feature": columns})
+    importance_df = pd.DataFrame(
+        {
+            "importance": model.feature_importance(importance_type="gain"),
+            "feature": columns,
+        }
+    )
     importance_df = importance_df.sort_values(by="importance", ascending=False)
 
     plt.figure(figsize=(6, 4))
     sns.barplot(x="importance", y="feature", data=importance_df[:10], orient="h")
-    plt.title(f"Feature Importance")
+    plt.title("Feature Importance")
     plt.xlabel("Importance")
     plt.ylabel("Features")
     plt.savefig("../output/feature_importance.png", bbox_inches="tight")
