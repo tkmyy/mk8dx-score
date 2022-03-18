@@ -1,8 +1,8 @@
 import argparse
 
+import cv2
 import numpy as np
 import pandas as pd
-import cv2
 from keras.models import load_model
 
 
@@ -31,20 +31,23 @@ def make_X(basename):
 
     return X
 
+
 def format_results(res):
     res = res.astype(str)
     res = res.replace({"10": ""})
     score = res.apply(lambda x: "".join(x[i] for i in range(3, 8)), axis=1).astype(int)
-    sign = res[0].apply(lambda x: 1 if x=="11" else -1)
+    sign = res[0].apply(lambda x: 1 if x == "11" else -1)
     fluc = (res[1] + res[2]).astype(int)
-    fluc = sign*fluc
+    fluc = sign * fluc
 
     score_df = pd.concat([fluc, score], axis=1)
     score_df = score_df.rename(columns={0: "rate_fluc", 1: "score_after"})
-    score_df["rank"] = [i+1 for i in range(12)]
+    score_df["rank"] = [i + 1 for i in range(12)]
     score_df["score_before"] = score_df["score_after"] - score_df["rate_fluc"]
 
-    score_df = score_df.reindex(columns=["rank", "rate_fluc", "score_after", "score_before"])
+    score_df = score_df.reindex(
+        columns=["rank", "rate_fluc", "score_after", "score_before"]
+    )
 
     return score_df
 
