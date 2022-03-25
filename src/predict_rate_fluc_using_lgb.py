@@ -1,4 +1,5 @@
 import glob
+import os
 
 import lightgbm as lgb
 import matplotlib.pyplot as plt
@@ -6,8 +7,7 @@ import pandas as pd
 import seaborn as sns
 from lightgbm import early_stopping, log_evaluation
 from sklearn.metrics import mean_squared_error
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import KFold
 
 plt.rcParams["font.size"] = 14
 
@@ -15,8 +15,7 @@ plt.rcParams["font.size"] = 14
 def main():
     score_data_paths = glob.glob("../score_data/*.csv")
     all_score_df = pd.concat([preprocess(path) for path in score_data_paths])
-    X, y = make_Xy(all_score_df)
-    predict_and_eval(X, y)
+    predict_and_eval(all_score_df)
 
 
 def preprocess(path):
@@ -34,28 +33,13 @@ def preprocess(path):
         )
 
     score_df = score_df.drop(columns="score_after")
+    score_df["filename"] = os.path.splitext(os.path.basename(path))[0]
 
     return score_df
 
 
-def make_Xy(data):
-    X = data.drop(columns="rate_fluc")
-    y = data["rate_fluc"]
-
-    le = LabelEncoder()
-    X["rank"] = le.fit_transform(X["rank"])
-
-    return X, y
-
-
-def predict_and_eval(X, y):
-    X_train, X_val, y_train, y_val = train_test_split(
-        X, y, test_size=0.2, shuffle=True, random_state=42
-    )
-
-    lgb_train = lgb.Dataset(X_train, y_train)
-    lgb_val = lgb.Dataset(X_val, y_val, reference=lgb_train)
-
+def predict_and_eval(data):
+    filename_list = data["filename"].unique()
     params = {
         "objective": "regression",
         "learning_rate": 0.01,
@@ -64,18 +48,35 @@ def predict_and_eval(X, y):
         "verbose": -1,
         "seed": 42,
     }
-    model = lgb.train(
-        params,
-        lgb_train,
-        valid_sets=lgb_val,
-        num_boost_round=1000,
-        callbacks=[log_evaluation(-1), early_stopping(10)],
-    )
 
-    y_val_pred = model.predict(X_val)
-    rmse = mean_squared_error(y_val, y_val_pred, squared=False)
-    print(f"valid rmse: {rmse}")
-    save_feature_importance(model, X.columns)
+    kf = KFold(n_splits=5, shuffle=True, random_state=42)
+    for train_filename_idx, test_filename_idx in kf.split(filename_list):
+        train_filename = filename_list[train_filename_idx]
+        test_filename = filename_list[test_filename_idx]
+
+        train_data = data[data["filename"].isin(train_filename)]
+        test_data = data[data["filename"].isin(test_filename)]
+
+        X_train = train_data.drop(columns=["filename", "rate_fluc"])
+        y_train = train_data["rate_fluc"]
+        X_test = test_data.drop(columns=["filename", "rate_fluc"])
+        y_test = test_data["rate_fluc"]
+
+        lgb_train = lgb.Dataset(X_train, y_train)
+        lgb_val = lgb.Dataset(X_test, y_test, reference=lgb_train)
+
+        model = lgb.train(
+            params,
+            lgb_train,
+            valid_sets=lgb_val,
+            num_boost_round=5000,
+            callbacks=[log_evaluation(-1), early_stopping(10)],
+        )
+
+        y_test_pred = model.predict(X_test)
+        rmse = mean_squared_error(y_test, y_test_pred, squared=False)
+        print(f"valid rmse: {rmse}")
+        # save_feature_importance(model, X_train.columns)
 
 
 def save_feature_importance(model, columns):
@@ -92,7 +93,7 @@ def save_feature_importance(model, columns):
     plt.title("Feature Importance")
     plt.xlabel("Importance")
     plt.ylabel("Features")
-    plt.savefig("../output/feature_importance.png", bbox_inches="tight")
+    # plt.savefig("../output/feature_importance.png", bbox_inches="tight")
     plt.close()
 
 
